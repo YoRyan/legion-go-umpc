@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, mpsc};
+use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
@@ -39,16 +39,14 @@ impl KeyboardStatus {
 const FORWARD_KEYS: [KeyCode; 2] = [KeyCode::KEY_VOLUMEDOWN, KeyCode::KEY_VOLUMEUP];
 
 fn main() {
-    let atomic_status = Arc::new(AtomicU32::new(KeyboardStatus::None as u32));
-    let atomic_status2 = atomic_status.clone();
+    static ATOMIC_STATUS: AtomicU32 = AtomicU32::new(KeyboardStatus::None as u32);
 
-    // (We pass references and Arc clones make the functions callable multiple
-    // times.)
+    // (We pass references to make the functions callable multiple times.)
 
     let (virtual_s, virtual_r) = mpsc::channel::<InputEvent>();
     let virtual_s2 = virtual_s.clone();
     spawn_loop("read_suppressed_keyboard", move || {
-        read_suppressed_keyboard(&virtual_s, atomic_status.clone())
+        read_suppressed_keyboard(&virtual_s, &ATOMIC_STATUS)
     });
     spawn_loop("run_virtual_device", move || run_virtual_device(&virtual_r));
 
@@ -57,7 +55,7 @@ fn main() {
         read_udev_add_remove(&udev_s)
     });
     let _ = spawn_loop("read_keyboard_status", move || {
-        read_keyboard_status(&udev_r, &virtual_s2, atomic_status2.clone())
+        read_keyboard_status(&udev_r, &virtual_s2, &ATOMIC_STATUS)
     })
     .join();
 
@@ -83,7 +81,7 @@ where
 
 fn read_suppressed_keyboard(
     consumer: &mpsc::Sender<InputEvent>,
-    atomic_status: Arc<AtomicU32>,
+    atomic_status: &AtomicU32,
 ) -> Result<()> {
     let forward_codes: HashSet<u16> = FORWARD_KEYS.iter().map(|k| k.0).collect();
 
@@ -170,7 +168,7 @@ fn read_udev_add_remove(consumer: &mpsc::SyncSender<()>) -> Result<()> {
 fn read_keyboard_status(
     udev_add_remove: &mpsc::Receiver<()>,
     virtual_consumer: &mpsc::Sender<InputEvent>,
-    atomic_status: Arc<AtomicU32>,
+    atomic_status: &AtomicU32,
 ) -> Result<()> {
     loop {
         let status = keyboard_status();
