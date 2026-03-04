@@ -21,7 +21,7 @@ rd.luks.uuid=luks-LUKS_UUID rd.luks.key=LUKS_UUID=/keyfile:UUID=USB_UUID
 
 Add `mt7921e.disable_aspm=1` to kargs. This does not make the crappy Mediatek card perform as well as an Intel one, but (I think) it helps.
 
-## lgo1-trio.service
+## lgo1-tablet.service
 
 Even though all of the LGo's accelerometers work out of the box, GNOME does not consider the device a convertible, and therefore will not auto-rotate the screen or display the on-screen keyboard. GNOME will only do this if one of the input devices emits the `SW_TABLET_MODE` event. (This is not true of many x86 convertibles, and certainly not of the LGo.)
 

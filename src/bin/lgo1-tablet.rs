@@ -115,7 +115,7 @@ fn run_virtual_device(event_stream: &mpsc::Receiver<InputEvent>) -> Result<()> {
     let keys = AttributeSet::<KeyCode>::from_iter(FORWARD_KEYS.iter());
     let switches = AttributeSet::<SwitchCode>::from_iter([SwitchCode::SW_TABLET_MODE]);
     let mut device = evdev::uinput::VirtualDevice::builder()?
-        .name("lgo1-trio virtual input device")
+        .name("lgo1-tablet virtual input device")
         .with_keys(&keys)?
         .with_switches(&switches)?
         .build()?;
