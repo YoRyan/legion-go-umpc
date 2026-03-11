@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -19,35 +18,15 @@ enum KeyboardStatus {
 }
 
 impl KeyboardStatus {
-    fn load_atomic(atomic: &AtomicU32) -> KeyboardStatus {
-        match atomic.load(Ordering::Relaxed) {
-            0x2 => KeyboardStatus::CaseExternal,
-            0x1 => KeyboardStatus::AnyExternal,
-            0x0 | _ => KeyboardStatus::None,
-        }
-    }
-
-    fn store_atomic(&self, atomic: &AtomicU32) {
-        atomic.store(*self as u32, Ordering::Relaxed)
-    }
-
     fn is_tablet_mode(&self) -> bool {
         *self == KeyboardStatus::None
     }
 }
 
-const FORWARD_KEYS: [KeyCode; 2] = [KeyCode::KEY_VOLUMEDOWN, KeyCode::KEY_VOLUMEUP];
-
 fn main() {
-    static ATOMIC_STATUS: AtomicU32 = AtomicU32::new(KeyboardStatus::None as u32);
-
     // (We pass references to make the functions callable multiple times.)
 
     let (virtual_s, virtual_r) = mpsc::channel::<InputEvent>();
-    let virtual_s2 = virtual_s.clone();
-    spawn_loop("read_suppressed_keyboard", move || {
-        read_suppressed_keyboard(&virtual_s, &ATOMIC_STATUS)
-    });
     spawn_loop("run_virtual_device", move || run_virtual_device(&virtual_r));
 
     let (udev_s, udev_r) = mpsc::sync_channel::<()>(0);
@@ -55,7 +34,7 @@ fn main() {
         read_udev_add_remove(&udev_s)
     });
     let _ = spawn_loop("read_keyboard_status", move || {
-        read_keyboard_status(&udev_r, &virtual_s2, &ATOMIC_STATUS)
+        read_keyboard_status(&udev_r, &virtual_s)
     })
     .join();
 
@@ -79,42 +58,10 @@ where
     })
 }
 
-fn read_suppressed_keyboard(
-    consumer: &mpsc::Sender<InputEvent>,
-    atomic_status: &AtomicU32,
-) -> Result<()> {
-    let forward_codes: HashSet<u16> = FORWARD_KEYS.iter().map(|k| k.0).collect();
-
-    let mut internal_keyboard = evdev::enumerate()
-        .map(|(_, d)| d)
-        .find(|d| {
-            let id = d.input_id();
-            id.bus_type() == BusType::BUS_I8042 && id.vendor() == 0x1 && id.product() == 0x1
-        })
-        .ok_or("could not find internal keyboard")?;
-
-    loop {
-        for event in internal_keyboard.fetch_events()? {
-            let code = event.code();
-            if forward_codes.contains(&code)
-                && KeyboardStatus::load_atomic(&atomic_status).is_tablet_mode()
-            {
-                consumer.send(InputEvent::new(
-                    evdev::EventType::KEY.0,
-                    code,
-                    event.value(),
-                ))?;
-            }
-        }
-    }
-}
-
 fn run_virtual_device(event_stream: &mpsc::Receiver<InputEvent>) -> Result<()> {
-    let keys = AttributeSet::<KeyCode>::from_iter(FORWARD_KEYS.iter());
     let switches = AttributeSet::<SwitchCode>::from_iter([SwitchCode::SW_TABLET_MODE]);
     let mut device = evdev::uinput::VirtualDevice::builder()?
         .name("lgo1-tablet virtual input device")
-        .with_keys(&keys)?
         .with_switches(&switches)?
         .build()?;
 
@@ -168,7 +115,6 @@ fn read_udev_add_remove(consumer: &mpsc::SyncSender<()>) -> Result<()> {
 fn read_keyboard_status(
     udev_add_remove: &mpsc::Receiver<()>,
     virtual_consumer: &mpsc::Sender<InputEvent>,
-    atomic_status: &AtomicU32,
 ) -> Result<()> {
     loop {
         let status = keyboard_status();
@@ -177,7 +123,6 @@ fn read_keyboard_status(
             SwitchCode::SW_TABLET_MODE.0,
             status.is_tablet_mode() as i32,
         ))?;
-        status.store_atomic(&atomic_status);
 
         // Wait for an update, but also force a recheck every now and then.
         match udev_add_remove.recv_timeout(Duration::from_secs(120)) {
