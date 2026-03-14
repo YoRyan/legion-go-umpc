@@ -6,9 +6,9 @@ The target platform is Fedora Silverblue with the GNOME desktop. I use a 3D-prin
 
 ## Disk encryption
 
-A must for any portable device, yet this is very tricky to accomplish on the LGo because there is no native keyboard. To type a passphrase to perform a LUKS unlock, you have to plug in an external USB keyboard. (To add insult to injury, the unlock screen is in portrait orientation.)
+A must for any portable device, yet this is very tricky to accomplish on the LGo because there is no native keyboard. To type a passphrase and perform a LUKS unlock, you need to connect an external USB keyboard. (To add insult to injury, the unlock screen is in portrait orientation.)
 
-Automatic unlock via TPM is one option, but this requires Secure Boot, which is also very tricky to achieve if you are using anything but the stock, Microsoft-signed Fedora kernel. Secure Boot also [cannot guarantee](https://github.com/fedora-silverblue/silverblue-docs/pull/176) the integrity of the kernel command line, among other things, because that would break the Silverblue boot process.
+Automatic unlock via TPM is one option, but this requires Secure Boot, which is also very tricky to achieve if you are using anything but the stock, Microsoft-signed Fedora kernel. Secure Boot also [cannot guarantee](https://github.com/fedora-silverblue/silverblue-docs/pull/176) the integrity of the kernel command line, among other things, as that would break the Silverblue boot process.
 
 Currently, I unlock with a keyfile stored on a USB drive attached to my keyring. This can be done keyboard-free on Silverblue with just a couple of additions to kargs:
 
@@ -21,19 +21,33 @@ rd.luks.uuid=luks-LUKS_UUID rd.luks.key=LUKS_UUID=/keyfile:UUID=USB_UUID
 
 Add `mt7921e.disable_aspm=1` to kargs. This does not make the crappy Mediatek card perform as well as an Intel one, but (I think) it helps.
 
-## lgo1-tablet.service
+## tablet-switch.service
 
-Even though all of the LGo's accelerometers work out of the box, GNOME does not consider the device a convertible, and therefore will not auto-rotate the screen or display the on-screen keyboard. GNOME will only do this if one of the input devices emits the `SW_TABLET_MODE` event. (This is not true of many x86 convertibles, and certainly not of the LGo.)
+Although all of the LGo's accelerometers work out of the box, GNOME does not consider the device a convertible, and therefore will not auto-rotate the screen or display the on-screen keyboard. GNOME will only do these things if one of the connected input devices emits the `SW_TABLET_MODE` event. (This is not true of many x86 convertibles, and certainly not of the LGo.)
 
-This daemon looks for attached keyboards (using evdev) and creates a virtual input device to send the `SW_TABLET_MODE` event if *no* keyboards are attached. It also re-broadcasts volume key presses, because these buttons are considered an "internal keyboard" and are suppressed by libinput when in tablet mode.
+This daemon creates a virtual input device that emits the `SW_TABLET_MODE` event based on the presence of an external input device: tablet mode *on* when none are connected, and tablet mode *off* when any external device is connected. 
 
 With a Rust toolchain installed, build the daemon with `cargo build`.
 
+## tablet-switch.conf
+
+This is the configuration file for the tablet-switch daemon. You can place it anywhere convenient in `/etc`.
+
+This TOML file dictates how tablet-switch classifies peripherals into internally- and externally-connected input devices. The file contains rules that match evdev devices by bus type, vendor, product, and version numbers. (Rules need not specify all attributes; those that are present will be tested.) The file contains two sets of rules: the "case" set and the "internal" set. Devices that are classified as "case" will always force tablet mode off, and in the future may also trigger a "laptop in case" mode. Tablet mode turns on if there is *at least one* device present that is not classified as "internal." Rules are specified as key-value tables. The key is solely for documentation purposes and has no significant meaning.
+
+Setting `debug = true` causes tablet-switch to print the classification of each connected device to assist in troubleshooting.
+
 ## 61-sensor-local.hwdb
 
-udev [includes](https://github.com/systemd/systemd/blob/main/hwdb.d/60-sensor.hwdb) a rule for the LGo that accounts for Linux running the display in landscape rather than portrait. If we don't undo this, GNOME will constantly be 90-degrees off when it sets the display orientation. This file, to be placed in `/etc/udev/hwdb.d`, changes the `ACCEL_MOUNT_MATRIX` value for this sensor back to the identity matrix. To apply the fix, run `systemd-hwdb update && udevadm trigger`.
+The LGo's tablet-derived display is so-called "native portrait," meaning that the default mode is 90-degrees sideways relative to the kickstand orientation. Linux automatically rotates the video output to landscape at boot-time, and udev [includes](https://github.com/systemd/systemd/blob/main/hwdb.d/60-sensor.hwdb) an accelerometer adjustment so that the accelerometer's computed angle matches the rotated landscape angle. Unfortunately, when we enable tablet mode and allow Mutter to auto-rotate the screen, it does not take into account the boot-time adjustment and consequently is 90-degrees off when rotating the display.
+
+This file, to be placed in `/etc/udev/hwdb.d`, reverts the `ACCEL_MOUNT_MATRIX` value for this sensor back to the identity matrix, so that Mutter computes the correct angle. To apply the fix, run `systemd-hwdb update && udevadm trigger`.
 
 On Silverblue, it appears you also have to `systemctl mask systemd-hwdb-update.service` to prevent systemd from discarding this change at bootup.
+
+## local-overrides.quirks
+
+Entering tablet mode causes libinput to suppress all keyboard and touchpad events, in line with the authors' assumption that any device with a tablet mode switch would be a reverse-folding convertible. With this file placed in `/etc/libinput`, we apply the `ModelTabletModeNoSuspend` [quirk](https://wayland.freedesktop.org/libinput/doc/latest/device-quirks.html) so that libinput does not suppress the side volume keys or the righthand controller's miniature touchpad, which are considered by libinput to be a "keyboard" and "touchpad."
 
 ## mutter-49.4-dont-reset-panel-rotation.patch
 
