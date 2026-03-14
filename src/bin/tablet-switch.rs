@@ -56,10 +56,12 @@ struct Rule {
 impl Rule {
     fn match_device(&self, device: &evdev::Device) -> bool {
         let id = device.input_id();
-        let device_keys: HashSet<u16> = match device.supported_keys() {
-            Some(keys) => keys.iter().map(|kc| kc.0).collect(),
-            None => HashSet::<u16>::new(),
-        };
+        let device_keys: HashSet<u16> = device
+            .supported_keys()
+            .into_iter()
+            .flatten()
+            .map(|kc| kc.0)
+            .collect();
         self.bus_type.is_none_or(|v| v == id.bus_type().0)
             && self.vendor.is_none_or(|v| v == id.vendor())
             && self.product.is_none_or(|v| v == id.product())
