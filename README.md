@@ -27,7 +27,7 @@ Although all of the LGo's accelerometers work out of the box, GNOME does not con
 
 This daemon creates a virtual input device that emits the `SW_TABLET_MODE` event based on the presence of an external input device: tablet mode *on* when none are connected, and tablet mode *off* when any external device is connected. 
 
-With a Rust toolchain installed, build the daemon with `cargo build`.
+With a Rust toolchain installed, build the daemon with `cargo build --release`.
 
 ## tablet-switch.conf
 
@@ -47,7 +47,7 @@ On Silverblue, it appears you also have to `systemctl mask systemd-hwdb-update.s
 
 ## local-overrides.quirks
 
-Entering tablet mode causes libinput to suppress all keyboard and touchpad events, in line with the authors' assumption that any device with a tablet mode switch would be a reverse-folding convertible. With this file placed in `/etc/libinput`, we apply the `ModelTabletModeNoSuspend` [quirk](https://wayland.freedesktop.org/libinput/doc/latest/device-quirks.html) so that libinput does not suppress the side volume keys or the righthand controller's miniature touchpad, which are considered by libinput to be a "keyboard" and "touchpad."
+Entering tablet mode causes libinput to suppress all keyboard and touchpad events, in line with the authors' assumption that any device with a tablet mode switch would be a reverse-folding convertible. With this file placed in `/etc/libinput`, we apply the `ModelTabletModeNoSuspend` [quirk](https://wayland.freedesktop.org/libinput/doc/latest/device-quirks.html) so that libinput does not suppress the side volume keys or the righthand controller's mouse controls, which are considered by libinput to be a "keyboard" and "touchpad."
 
 ## mutter-49.4-dont-reset-panel-rotation.patch
 
