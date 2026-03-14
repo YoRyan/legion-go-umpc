@@ -4,13 +4,13 @@ MatchVendor=0x0001
 MatchProduct=0x0001
 ModelTabletModeNoSuspend=1
 
-[Controller Touchpad]
+[Legion Controller]
 MatchBus=usb
 MatchVendor=0x17EF
 MatchProduct=0x6184
 ModelTabletModeNoSuspend=1
 
-[Controller Touchpad Connected]
+[Legion Controller Connected]
 MatchBus=usb
 MatchVendor=0x17EF
 MatchProduct=0x6182
