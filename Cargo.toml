@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-evdev = "0.13"
-libc = "0.2"
-serde = { version = "1.0", features = ["derive"] }
-toml = "1.0"
-udev = "0.9"
+evdev = "0"
+libc = "0"
+serde = { version = "1", features = ["derive"] }
+toml = "1"
+udev = "0"
