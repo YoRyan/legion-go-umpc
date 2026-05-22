@@ -189,7 +189,7 @@ fn set_tablet_switch(
     virtual_consumer: &mpsc::Sender<InputEvent>,
 ) -> Result<()> {
     loop {
-        let mode = current_mode(&config);
+        let mode = current_mode(config);
         virtual_consumer.send(InputEvent::new(
             evdev::EventType::SWITCH.0,
             SwitchCode::SW_TABLET_MODE.0,
@@ -201,12 +201,12 @@ fn set_tablet_switch(
         }
 
         // Wait for an update, but also force a recheck every now and then.
-        let Ok(_) = udev_add_remove.recv_timeout(Duration::from_secs(120)) else {
+        if udev_add_remove.recv_timeout(Duration::from_secs(120)).is_err() {
             continue;
         };
         // Wait for all events to come in, and then impose a short delay. This
         // accounts for the time the kernel needs to add and remove devices.
-        while let Ok(_) = udev_add_remove.recv_timeout(Duration::from_millis(1000)) {}
+        while udev_add_remove.recv_timeout(Duration::from_millis(1000)).is_ok() {}
     }
 }
 
@@ -216,9 +216,9 @@ fn current_mode(config: &Config) -> Mode {
     if config.debug_mode() {
         for d in devices.iter() {
             let input_id = d.input_id();
-            if config.is_case_device(&d) {
+            if config.is_case_device(d) {
                 eprintln!("* Case device {:?}", input_id);
-            } else if config.is_internal_device(&d) {
+            } else if config.is_internal_device(d) {
                 eprintln!("- Internal device {:?}", input_id);
             } else {
                 eprintln!("+ External device {:?}", input_id);
@@ -227,9 +227,9 @@ fn current_mode(config: &Config) -> Mode {
     }
 
     for d in devices.iter() {
-        if config.is_case_device(&d) {
+        if config.is_case_device(d) {
             return Mode::LaptopWithCase;
-        } else if !config.is_internal_device(&d) {
+        } else if !config.is_internal_device(d) {
             return Mode::Laptop;
         }
     }
