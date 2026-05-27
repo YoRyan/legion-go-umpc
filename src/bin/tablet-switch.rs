@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 enum Mode {
     /// The keyboard case is connected.
     LaptopWithCase = 0x2,
