@@ -24,3 +24,8 @@ target
 # Added by cargo
 
 /target
+
+## RPM builds
+/rpms/**/*.zip
+/rpms/**/*.log
+/rpms/**/*.rpm

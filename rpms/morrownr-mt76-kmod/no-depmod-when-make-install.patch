@@ -1,0 +1,12 @@
+diff --git a/Makefile b/Makefile
+index 70ecf4ed..7670e850 100644
+--- a/Makefile
++++ b/Makefile
+@@ -166,7 +166,6 @@ install:
+ 		echo "Compressing modules with gzip (matching distro scheme)..."; \
+ 		gzip -f $(MODDIR)/*.ko 2>/dev/null || true; \
+ 	fi
+-	depmod -a $(KVER)
+ 
+ install_fw:
+ 	@echo "Installing firmware to $(FWDIR)..."
