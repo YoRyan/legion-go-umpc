@@ -17,9 +17,24 @@ rd.luks.options=discard,keyfile-timeout=10s
 rd.luks.uuid=luks-LUKS_UUID rd.luks.key=LUKS_UUID=/keyfile:UUID=USB_UUID
 ```
 
-## MT7922 latency spike fix
+## Better Wi-Fi driver for MT7922
 
-The onboard Mediatek Wi-Fi has awful performance out of the box. [Disable](https://gist.github.com/jcberthon/ea8cfe278998968ba7c5a95344bc8b55) the power-saving feature to make it usable again.
+The onboard Mediatek Wi-Fi has awful performance with the mainline Linux driver. (As of kernel 7.2, it's barely even functional with my hardware.) As an alternative, switch to the out-of-tree, OpenWrt-derived mt76 [driver](https://github.com/morrownr/mt76). I've created spec files to build the necessary rpm's for Silverblue:
+
+```sh
+cd rpms/morrownr-mt76/
+spectool -g morrownr-mt76.spec
+fedpkg local
+sudo rpm-ostree install ./x86_64/morrownr-mt76-blah.x86_64.rpm
+cd ../morrownr-mt76-kmod/
+spectool -g morrownr-mt76-kmod.spec
+fedpkg local
+sudo rpm-ostree install ./x86_64/morrownr-mt76-kmod-blah.x86_64.rpm
+# Blacklist the mainline driver (if not already done).
+sudo rpm-ostree kargs --append=rd.driver.blacklist=mt7921e
+```
+
+There is currently no solution for automatic builds with kernel updates; you'll have to build new packages yourself.
 
 ## tablet-switch.service
 
@@ -55,6 +70,6 @@ Recent versions of Mutter rotate the display back to its native orientation when
 
 You can [build](https://blog.aloni.org/posts/how-to-easily-patch-fedora-packages/) your own custom package using fedpkg, and on Silverblue, you can install the resulting packages with something like:
 
-```
-# rpm-ostree override replace ./mutter-49.5-1.fc43.yoryan.x86_64.rpm ./mutter-common-49.5-1.fc43.yoryan.noarch.rpm
+```sh
+sudo rpm-ostree override replace ./mutter-49.5-1.fc43.yoryan.x86_64.rpm ./mutter-common-49.5-1.fc43.yoryan.noarch.rpm
 ```
