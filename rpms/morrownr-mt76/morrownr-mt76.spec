@@ -1,13 +1,15 @@
-%define revision        92507536fbbedaaa1e20e103ad67a502a7a50b0b
+%global snapshotdate	20261004
+%global commit		55b18808728005e2cb76a13fa2e38d7a5ca577ab
+%global shortcommit	%(c=%{commit}; echo ${c:0:7})
 %global debug_package   %{nil}
 
 Name:           morrownr-mt76
-Version:        0.git%{revision}
-Release:        1
+Version:        0.%{snapshotdate}git%{shortcommit}
+Release:        1%{?dist}
 Summary:        Provides modern, mac80211, out-of-tree (out-of-kernel) Linux driver support for Mediatek wireless chips
-License:        BSD-3-Clause
+License:        GPL-2.0-only AND BSD-3-Clause
 URL:            https://github.com/morrownr/mt76
-Source0:        https://github.com/morrownr/mt76/archive/%{revision}.zip
+Source0:        %{url}/archive/%{commit}.zip
 
 Requires:       %{name}-kmod >= %{version}
 Provides:       %{name}-kmod-common = %{version}
@@ -33,3 +35,8 @@ find %{buildroot}/lib/firmware/mediatek -name '*.bin' -exec xz -f -C crc32 {} \;
 %license LICENSE
 %doc MAINTAINING.md README.md SENDING-A-PATCH.md
 /lib/firmware/mediatek
+
+
+%changelog
+* Sun Oct 04 2026 Ryan Young <ryan@youngryan.com> - 0.20261004git55b1880-1
+- Initial packaging

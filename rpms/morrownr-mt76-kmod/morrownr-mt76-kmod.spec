@@ -4,20 +4,23 @@
 #define buildforkernels akmod
 #define kernels         blah.fc44.x86_64
 
-%define revision        92507536fbbedaaa1e20e103ad67a502a7a50b0b
+%global snapshotdate	20261004
+%global commit		55b18808728005e2cb76a13fa2e38d7a5ca577ab
+%global shortcommit	%(c=%{commit}; echo ${c:0:7})
+%global debug_package	%{nil}
 
 # name should have a -kmod suffix
 Name:           morrownr-mt76-kmod
 
-Version:        0.git%{revision}
-Release:        1
+Version:        0.%{snapshotdate}git%{shortcommit}
+Release:        1%{?dist}
 Summary:        Provides modern, mac80211, out-of-tree (out-of-kernel) Linux driver support for Mediatek wireless chips
 
 Group:          System Environment/Kernel
 
-License:        BSD-3-Clause
+License:        GPL-2.0-only AND BSD-3-Clause
 URL:            https://github.com/morrownr/mt76
-Source0:        https://github.com/morrownr/mt76/archive/%{revision}.zip
+Source0:        %{url}/archive/%{commit}.zip
 Patch0:         no-depmod-when-make-install.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -55,10 +58,10 @@ level equal to kernel 7.3 as of 2026-07-24.
 kmodtool  --target %{_target_cpu}  --repo rpmfusion --kmodname %{name} %{?buildforkernels:--%{buildforkernels}} %{?kernels:--for-kernels "%{?kernels}"} 2>/dev/null
 
 %setup -q -c -T -a 0
-%patch 0 -p 1 -d mt76-%{revision}
+%patch 0 -p 1 -d mt76-%{commit}
 
 for kernel_version in %{?kernel_versions} ; do
-    cp -a mt76-%{revision} _kmod_build_${kernel_version%%___*}
+    cp -a mt76-%{commit} _kmod_build_${kernel_version%%___*}
 done
 
 
@@ -79,3 +82,7 @@ done
 
 %clean
 rm -rf $RPM_BUILD_ROOT
+
+%changelog
+* Sun Oct 04 2026 Ryan Young <ryan@youngryan.com> - 0.20261004git55b1880-1
+- Initial packaging
